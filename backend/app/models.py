@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import (
     DateTime,
@@ -103,7 +104,7 @@ class Payment(Base):
     tenant_id: Mapped[str] = mapped_column(String, ForeignKey("tenants.id"), nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     due_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    paid_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="unpaid")  # unpaid | paid | late
 
     tenant: Mapped["Tenant"] = relationship(back_populates="payments")

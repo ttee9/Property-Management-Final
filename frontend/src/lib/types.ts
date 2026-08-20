@@ -44,3 +44,17 @@ export interface TenantSummary {
 export function formatCents(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
+
+export function getLatestPaymentByTenant(payments: Payment[]): Map<string, Payment> {
+  const latest = new Map<string, Payment>();
+
+  for (const payment of [...payments].sort(
+    (a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime()
+  )) {
+    if (!latest.has(payment.tenant_id)) {
+      latest.set(payment.tenant_id, payment);
+    }
+  }
+
+  return latest;
+}

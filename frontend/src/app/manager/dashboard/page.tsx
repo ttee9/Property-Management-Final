@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
-import { MaintenanceRequest, Payment, TenantSummary, formatCents } from "@/lib/types";
+import { MaintenanceRequest, Payment, TenantSummary, formatCents, getLatestPaymentByTenant } from "@/lib/types";
 
 const REQUEST_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const PAYMENT_STATUSES = ["unpaid", "paid", "late"];
@@ -87,7 +87,7 @@ export default function ManagerDashboardPage() {
     );
   }
 
-  const paymentsByTenant = new Map(payments.map((p) => [p.tenant_id, p]));
+  const paymentsByTenant = getLatestPaymentByTenant(payments);
 
   return (
     <div className="page">

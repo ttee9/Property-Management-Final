@@ -1,4 +1,5 @@
 import jwt
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ from .security import decode_access_token
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def _decode(credentials: HTTPAuthorizationCredentials | None) -> dict:
+def _decode(credentials: Optional[HTTPAuthorizationCredentials]) -> dict:
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
@@ -22,7 +23,7 @@ def _decode(credentials: HTTPAuthorizationCredentials | None) -> dict:
 
 
 def get_current_tenant(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> models.Tenant:
     payload = _decode(credentials)
@@ -35,7 +36,7 @@ def get_current_tenant(
 
 
 def get_current_manager(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> models.Manager:
     payload = _decode(credentials)

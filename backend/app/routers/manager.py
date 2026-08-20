@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
@@ -73,7 +74,7 @@ def list_tenants(
 def list_all_requests(
     manager: models.Manager = Depends(get_current_manager),
     db: Session = Depends(get_db),
-    status_filter: str | None = Query(default=None, alias="status"),
+    status_filter: Optional[str] = Query(default=None, alias="status"),
 ):
     tenant_ids = _managed_tenant_ids(db, manager)
     query = (
@@ -144,7 +145,7 @@ def update_request_status(
 def list_all_payments(
     manager: models.Manager = Depends(get_current_manager),
     db: Session = Depends(get_db),
-    status_filter: str | None = Query(default=None, alias="status"),
+    status_filter: Optional[str] = Query(default=None, alias="status"),
 ):
     tenant_ids = _managed_tenant_ids(db, manager)
     query = (
