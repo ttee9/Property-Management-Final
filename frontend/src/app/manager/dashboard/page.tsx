@@ -141,7 +141,7 @@ export default function ManagerDashboardPage() {
                         <td>{t.phone}</td>
                         <td>
                           <span className={`badge badge-${t.current_status}`}>{t.current_status}</span>
-                          {payment && <div className="helper-text">{formatCents(payment.amount_cents)}</div>}
+                          {payment && <div className="cell-note">{formatCents(payment.amount_cents)}</div>}
                         </td>
                         <td>{t.open_requests}</td>
                         <td>
