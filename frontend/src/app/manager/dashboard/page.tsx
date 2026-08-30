@@ -125,6 +125,7 @@ export default function ManagerDashboardPage() {
                     <th>Unit</th>
                     <th>Phone</th>
                     <th>Payment Status</th>
+                    <th>Rent Amount</th>
                     <th>Open Requests</th>
                     <th>Update Payment</th>
                   </tr>
@@ -141,8 +142,8 @@ export default function ManagerDashboardPage() {
                         <td>{t.phone}</td>
                         <td>
                           <span className={`badge badge-${t.current_status}`}>{t.current_status}</span>
-                          {payment && <div className="cell-note">{formatCents(payment.amount_cents)}</div>}
                         </td>
+                        <td>{payment ? formatCents(payment.amount_cents) : "—"}</td>
                         <td>{t.open_requests}</td>
                         <td>
                           {payment ? (
