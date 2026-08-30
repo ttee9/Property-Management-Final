@@ -96,3 +96,18 @@ class TenantSummaryOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TenantCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    phone: str = Field(..., min_length=7, max_length=20)
+    unit_id: str
+
+
+class UnitOut(BaseModel):
+    id: str
+    unit_number: str
+    property_name: str
+
+    class Config:
+        from_attributes = True

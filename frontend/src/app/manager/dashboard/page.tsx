@@ -8,6 +8,7 @@ import {
   MaintenanceRequest,
   Payment,
   TenantSummary,
+  Unit,
   formatCents,
   formatMonth,
   getLatestPaymentByTenant,
@@ -24,9 +25,17 @@ export default function ManagerDashboardPage() {
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedTenantIds, setExpandedTenantIds] = useState<Set<string>>(new Set());
+
+  const [showAddTenant, setShowAddTenant] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newUnitId, setNewUnitId] = useState("");
+  const [addingTenant, setAddingTenant] = useState(false);
+  const [addTenantError, setAddTenantError] = useState<string | null>(null);
 
   function toggleHistory(tenantId: string) {
     setExpandedTenantIds((prev) => {
@@ -43,14 +52,16 @@ export default function ManagerDashboardPage() {
   const loadData = useCallback(
     async (activeToken: string) => {
       try {
-        const [tenantsRes, requestsRes, paymentsRes] = await Promise.all([
+        const [tenantsRes, requestsRes, paymentsRes, unitsRes] = await Promise.all([
           apiFetch<TenantSummary[]>("/manager/tenants", { token: activeToken }),
           apiFetch<MaintenanceRequest[]>("/manager/maintenance-requests", { token: activeToken }),
           apiFetch<Payment[]>("/manager/payments", { token: activeToken }),
+          apiFetch<Unit[]>("/manager/units", { token: activeToken }),
         ]);
         setTenants(tenantsRes);
         setRequests(requestsRes);
         setPayments(paymentsRes);
+        setUnits(unitsRes);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           clearToken("manager");
@@ -95,6 +106,29 @@ export default function ManagerDashboardPage() {
     }
   }
 
+  async function addTenant(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    setAddTenantError(null);
+    setAddingTenant(true);
+    try {
+      await apiFetch("/manager/tenants", {
+        method: "POST",
+        token,
+        body: { name: newName, phone: newPhone, unit_id: newUnitId },
+      });
+      setNewName("");
+      setNewPhone("");
+      setNewUnitId("");
+      setShowAddTenant(false);
+      await loadData(token);
+    } catch (err) {
+      setAddTenantError(err instanceof Error ? err.message : "Failed to add tenant");
+    } finally {
+      setAddingTenant(false);
+    }
+  }
+
   function signOut() {
     clearToken("manager");
     router.push("/manager/login");
@@ -136,7 +170,59 @@ export default function ManagerDashboardPage() {
 
         {tab === "tenants" && (
           <div className="card">
-            <h2>Tenants</h2>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <h2>Tenants</h2>
+              <button className="secondary" onClick={() => setShowAddTenant((v) => !v)}>
+                {showAddTenant ? "Cancel" : "+ Add Tenant"}
+              </button>
+            </div>
+
+            {showAddTenant && (
+              <form onSubmit={addTenant} className="row" style={{ alignItems: "flex-start", marginBottom: 20 }}>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="new-tenant-name">Name</label>
+                  <input
+                    id="new-tenant-name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="new-tenant-phone">Phone</label>
+                  <input
+                    id="new-tenant-phone"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="+1 415 555 0100"
+                    required
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="new-tenant-unit">Unit</label>
+                  <select
+                    id="new-tenant-unit"
+                    value={newUnitId}
+                    onChange={(e) => setNewUnitId(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select a unit
+                    </option>
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.unit_number} &middot; {u.property_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button type="submit" disabled={addingTenant}>
+                  {addingTenant ? "Adding..." : "Add"}
+                </button>
+              </form>
+            )}
+            {addTenantError && <div className="error">{addTenantError}</div>}
+
             {tenants.length === 0 ? (
               <p className="empty">No tenants yet.</p>
             ) : (
