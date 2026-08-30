@@ -41,6 +41,12 @@ export interface TenantSummary {
   open_requests: number;
 }
 
+export interface Unit {
+  id: string;
+  unit_number: string;
+  property_name: string;
+}
+
 export function formatCents(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from .. import models, schemas
 from ..database import get_db
 from ..deps import get_current_manager
+from ..security import normalize_phone
 
 router = APIRouter(prefix="/manager", tags=["manager"])
 
@@ -68,6 +69,62 @@ def list_tenants(
             )
         )
     return out
+
+
+@router.get("/units", response_model=list[schemas.UnitOut])
+def list_units(
+    manager: models.Manager = Depends(get_current_manager),
+    db: Session = Depends(get_db),
+):
+    units = (
+        db.query(models.Unit)
+        .join(models.Property)
+        .filter(models.Property.manager_id == manager.id)
+        .options(joinedload(models.Unit.property))
+        .order_by(models.Property.name, models.Unit.unit_number)
+        .all()
+    )
+    return [
+        schemas.UnitOut(id=u.id, unit_number=u.unit_number, property_name=u.property.name) for u in units
+    ]
+
+
+@router.post("/tenants", response_model=schemas.TenantSummaryOut, status_code=status.HTTP_201_CREATED)
+def create_tenant(
+    payload: schemas.TenantCreate,
+    manager: models.Manager = Depends(get_current_manager),
+    db: Session = Depends(get_db),
+):
+    unit = (
+        db.query(models.Unit)
+        .join(models.Property)
+        .filter(models.Unit.id == payload.unit_id, models.Property.manager_id == manager.id)
+        .first()
+    )
+    if unit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
+
+    phone = normalize_phone(payload.phone)
+    existing = db.query(models.Tenant).filter(models.Tenant.phone == phone).first()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="A tenant with this phone number already exists"
+        )
+
+    tenant = models.Tenant(name=payload.name.strip(), phone=phone, unit_id=unit.id)
+    db.add(tenant)
+    db.commit()
+    db.refresh(tenant)
+
+    return schemas.TenantSummaryOut(
+        id=tenant.id,
+        name=tenant.name,
+        phone=tenant.phone,
+        unit_number=unit.unit_number,
+        property_name=unit.property.name,
+        current_status="unpaid",
+        open_requests=0,
+    )
 
 
 @router.get("/maintenance-requests", response_model=list[schemas.MaintenanceRequestOut])
