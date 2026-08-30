@@ -58,3 +58,26 @@ export function getLatestPaymentByTenant(payments: Payment[]): Map<string, Payme
 
   return latest;
 }
+
+export function getPaymentsByTenant(payments: Payment[]): Map<string, Payment[]> {
+  const byTenant = new Map<string, Payment[]>();
+
+  for (const payment of payments) {
+    const list = byTenant.get(payment.tenant_id);
+    if (list) {
+      list.push(payment);
+    } else {
+      byTenant.set(payment.tenant_id, [payment]);
+    }
+  }
+
+  for (const list of byTenant.values()) {
+    list.sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
+  }
+
+  return byTenant;
+}
+
+export function formatMonth(dateString: string): string {
+  return new Date(dateString).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}

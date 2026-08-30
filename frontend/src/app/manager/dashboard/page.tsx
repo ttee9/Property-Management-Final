@@ -1,10 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
-import { MaintenanceRequest, Payment, TenantSummary, formatCents, getLatestPaymentByTenant } from "@/lib/types";
+import {
+  MaintenanceRequest,
+  Payment,
+  TenantSummary,
+  formatCents,
+  formatMonth,
+  getLatestPaymentByTenant,
+  getPaymentsByTenant,
+} from "@/lib/types";
 
 const REQUEST_STATUSES = ["open", "in_progress", "completed", "cancelled"];
 const PAYMENT_STATUSES = ["unpaid", "paid", "late"];
@@ -18,6 +26,19 @@ export default function ManagerDashboardPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedTenantIds, setExpandedTenantIds] = useState<Set<string>>(new Set());
+
+  function toggleHistory(tenantId: string) {
+    setExpandedTenantIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tenantId)) {
+        next.delete(tenantId);
+      } else {
+        next.add(tenantId);
+      }
+      return next;
+    });
+  }
 
   const loadData = useCallback(
     async (activeToken: string) => {
@@ -88,6 +109,7 @@ export default function ManagerDashboardPage() {
   }
 
   const paymentsByTenant = getLatestPaymentByTenant(payments);
+  const paymentHistoryByTenant = getPaymentsByTenant(payments);
 
   return (
     <div className="page">
@@ -128,40 +150,91 @@ export default function ManagerDashboardPage() {
                     <th>Rent Amount</th>
                     <th>Open Requests</th>
                     <th>Update Payment</th>
+                    <th>History</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tenants.map((t) => {
                     const payment = paymentsByTenant.get(t.id);
+                    const history = paymentHistoryByTenant.get(t.id) ?? [];
+                    const expanded = expandedTenantIds.has(t.id);
                     return (
-                      <tr key={t.id}>
-                        <td>{t.name}</td>
-                        <td>
-                          {t.unit_number} &middot; {t.property_name}
-                        </td>
-                        <td>{t.phone}</td>
-                        <td>
-                          <span className={`badge badge-${t.current_status}`}>{t.current_status}</span>
-                        </td>
-                        <td>{payment ? formatCents(payment.amount_cents) : "—"}</td>
-                        <td>{t.open_requests}</td>
-                        <td>
-                          {payment ? (
-                            <select
-                              value={payment.status}
-                              onChange={(e) => updatePaymentStatus(payment.id, e.target.value)}
-                            >
-                              {PAYMENT_STATUSES.map((s) => (
-                                <option key={s} value={s}>
-                                  {s}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="empty">No payment record</span>
-                          )}
-                        </td>
-                      </tr>
+                      <Fragment key={t.id}>
+                        <tr>
+                          <td>{t.name}</td>
+                          <td>
+                            {t.unit_number} &middot; {t.property_name}
+                          </td>
+                          <td>{t.phone}</td>
+                          <td>
+                            <span className={`badge badge-${t.current_status}`}>{t.current_status}</span>
+                          </td>
+                          <td>{payment ? formatCents(payment.amount_cents) : "—"}</td>
+                          <td>{t.open_requests}</td>
+                          <td>
+                            {payment ? (
+                              <select
+                                value={payment.status}
+                                onChange={(e) => updatePaymentStatus(payment.id, e.target.value)}
+                              >
+                                {PAYMENT_STATUSES.map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="empty">No payment record</span>
+                            )}
+                          </td>
+                          <td>
+                            {history.length > 0 && (
+                              <button className="link" onClick={() => toggleHistory(t.id)}>
+                                {expanded ? "Hide" : "Show"} ({history.length})
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {expanded && history.length > 0 && (
+                          <tr>
+                            <td colSpan={8}>
+                              <table className="history-table">
+                                <thead>
+                                  <tr>
+                                    <th>Month</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Update</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {history.map((p) => (
+                                    <tr key={p.id}>
+                                      <td>{formatMonth(p.due_date)}</td>
+                                      <td>{formatCents(p.amount_cents)}</td>
+                                      <td>
+                                        <span className={`badge badge-${p.status}`}>{p.status}</span>
+                                      </td>
+                                      <td>
+                                        <select
+                                          value={p.status}
+                                          onChange={(e) => updatePaymentStatus(p.id, e.target.value)}
+                                        >
+                                          {PAYMENT_STATUSES.map((s) => (
+                                            <option key={s} value={s}>
+                                              {s}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
