@@ -106,6 +106,19 @@ export default function ManagerDashboardPage() {
     }
   }
 
+  async function removeTenant(id: string, name: string) {
+    if (!token) return;
+    if (!window.confirm(`Remove ${name}? This also deletes their payment and maintenance request history.`)) {
+      return;
+    }
+    try {
+      await apiFetch(`/manager/tenants/${id}`, { method: "DELETE", token });
+      loadData(token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove tenant");
+    }
+  }
+
   async function addTenant(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -237,6 +250,7 @@ export default function ManagerDashboardPage() {
                     <th>Open Requests</th>
                     <th>Update Payment</th>
                     <th>History</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -280,10 +294,19 @@ export default function ManagerDashboardPage() {
                               </button>
                             )}
                           </td>
+                          <td>
+                            <button
+                              className="link"
+                              style={{ color: "var(--danger)" }}
+                              onClick={() => removeTenant(t.id, t.name)}
+                            >
+                              Remove
+                            </button>
+                          </td>
                         </tr>
                         {expanded && history.length > 0 && (
                           <tr>
-                            <td colSpan={8}>
+                            <td colSpan={9}>
                               <table className="history-table">
                                 <thead>
                                   <tr>

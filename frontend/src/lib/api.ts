@@ -23,7 +23,7 @@ export async function apiFetch<T>(
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
-  const isJson = res.headers.get("content-type")?.includes("application/json");
+  const isJson = res.status !== 204 && res.headers.get("content-type")?.includes("application/json");
   const data = isJson ? await res.json() : null;
 
   if (!res.ok) {

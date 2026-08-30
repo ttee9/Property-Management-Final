@@ -127,6 +127,26 @@ def create_tenant(
     )
 
 
+@router.delete("/tenants/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_tenant(
+    tenant_id: str,
+    manager: models.Manager = Depends(get_current_manager),
+    db: Session = Depends(get_db),
+):
+    tenant = (
+        db.query(models.Tenant)
+        .join(models.Unit)
+        .join(models.Property)
+        .filter(models.Tenant.id == tenant_id, models.Property.manager_id == manager.id)
+        .first()
+    )
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+
+    db.delete(tenant)
+    db.commit()
+
+
 @router.get("/maintenance-requests", response_model=list[schemas.MaintenanceRequestOut])
 def list_all_requests(
     manager: models.Manager = Depends(get_current_manager),
