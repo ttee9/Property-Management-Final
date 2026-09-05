@@ -14,12 +14,69 @@ DEMO_MANAGER_PASSWORD = "manager123"
 DEMO_TENANT_PHONE = "+15555550100"
 
 
+def _add_demo_tenant_if_missing(db, manager: Manager) -> bool:
+    """Add the public demo tenant to an existing manager's property, unless it's
+    already there. Returns whether it was added, so callers can report what happened."""
+    if db.query(Tenant).filter(Tenant.phone == DEMO_TENANT_PHONE).first():
+        return False
+
+    prop = db.query(Property).filter(Property.manager_id == manager.id).first()
+    if prop is None:
+        return False
+
+    demo_unit = Unit(property_id=prop.id, unit_number="DEMO")
+    db.add(demo_unit)
+    db.flush()
+
+    demo_tenant = Tenant(name="Demo Tenant", phone=DEMO_TENANT_PHONE, unit_id=demo_unit.id)
+    db.add(demo_tenant)
+    db.flush()
+
+    now = datetime.utcnow()
+    this_month_due = now.replace(day=1)
+    last_month_due = (this_month_due - timedelta(days=1)).replace(day=1)
+    db.add(
+        Payment(
+            tenant_id=demo_tenant.id,
+            amount_cents=185000,
+            due_date=last_month_due,
+            paid_date=last_month_due + timedelta(days=2),
+            status="paid",
+        )
+    )
+    db.add(
+        Payment(
+            tenant_id=demo_tenant.id,
+            amount_cents=185000,
+            due_date=this_month_due,
+            paid_date=None,
+            status="unpaid",
+        )
+    )
+    db.add(
+        MaintenanceRequest(
+            tenant_id=demo_tenant.id,
+            title="Squeaky bedroom door",
+            description="The bedroom door hinge squeaks loudly when opened.",
+            category="other",
+            priority="low",
+            status="open",
+        )
+    )
+    db.commit()
+    return True
+
+
 def seed() -> None:
     init_db()
 
     with session_scope() as db:
-        if db.query(Manager).filter(Manager.email == DEMO_MANAGER_EMAIL).first():
-            print("Demo data already present, skipping seed.")
+        manager = db.query(Manager).filter(Manager.email == DEMO_MANAGER_EMAIL).first()
+        if manager:
+            if _add_demo_tenant_if_missing(db, manager):
+                print("Added the missing public demo tenant to existing seed data.")
+            else:
+                print("Demo data already present, skipping seed.")
             return
 
         manager = Manager(
@@ -80,45 +137,7 @@ def seed() -> None:
 
         # Public demo tenant so site visitors can try the tenant dashboard (see
         # DEMO_TENANT_PHONE special-case in routers/auth.py for the fixed login code).
-        demo_unit = Unit(property_id=prop.id, unit_number="DEMO")
-        db.add(demo_unit)
-        db.flush()
-
-        demo_tenant = Tenant(name="Demo Tenant", phone=DEMO_TENANT_PHONE, unit_id=demo_unit.id)
-        db.add(demo_tenant)
-        db.flush()
-
-        this_month_due = now.replace(day=1)
-        last_month_due = this_month_due - timedelta(days=1)
-        last_month_due = last_month_due.replace(day=1)
-        db.add(
-            Payment(
-                tenant_id=demo_tenant.id,
-                amount_cents=185000,
-                due_date=last_month_due,
-                paid_date=last_month_due + timedelta(days=2),
-                status="paid",
-            )
-        )
-        db.add(
-            Payment(
-                tenant_id=demo_tenant.id,
-                amount_cents=185000,
-                due_date=this_month_due,
-                paid_date=None,
-                status="unpaid",
-            )
-        )
-        db.add(
-            MaintenanceRequest(
-                tenant_id=demo_tenant.id,
-                title="Squeaky bedroom door",
-                description="The bedroom door hinge squeaks loudly when opened.",
-                category="other",
-                priority="low",
-                status="open",
-            )
-        )
+        _add_demo_tenant_if_missing(db, manager)
 
         print("Seed complete.")
         print(f"Manager login -> email: {DEMO_MANAGER_EMAIL}  password: {DEMO_MANAGER_PASSWORD}")
