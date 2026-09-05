@@ -24,6 +24,11 @@ logger = logging.getLogger(__name__)
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 OTP_RESEND_COOLDOWN_SECONDS = 30
 
+# Public demo account so site visitors can try the tenant experience without a real
+# phone/SMS flow. Always logs in with a fixed code and never touches the SMS provider.
+DEMO_TENANT_PHONE = "+15555550100"
+DEMO_TENANT_CODE = "123456"
+
 
 @router.post("/tenant/request-otp")
 def request_otp(payload: schemas.TenantOtpRequest, db: Session = Depends(get_db)):
@@ -35,6 +40,16 @@ def request_otp(payload: schemas.TenantOtpRequest, db: Session = Depends(get_db)
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No tenant account found for this phone number. Contact your property manager.",
         )
+
+    if phone == DEMO_TENANT_PHONE:
+        otp = models.OtpCode(
+            phone=phone,
+            code_hash=hash_otp(DEMO_TENANT_CODE),
+            expires_at=otp_expiry(),
+        )
+        db.add(otp)
+        db.commit()
+        return {"message": "Demo login code ready.", "debug_code": DEMO_TENANT_CODE}
 
     recent = (
         db.query(models.OtpCode)

@@ -11,6 +11,7 @@ from .security import hash_password
 
 DEMO_MANAGER_EMAIL = "manager@demo.com"
 DEMO_MANAGER_PASSWORD = "manager123"
+DEMO_TENANT_PHONE = "+15555550100"
 
 
 def seed() -> None:
@@ -73,6 +74,48 @@ def seed() -> None:
                 description="The faucet drips constantly and the cabinet underneath is getting wet.",
                 category="plumbing",
                 priority="high",
+                status="open",
+            )
+        )
+
+        # Public demo tenant so site visitors can try the tenant dashboard (see
+        # DEMO_TENANT_PHONE special-case in routers/auth.py for the fixed login code).
+        demo_unit = Unit(property_id=prop.id, unit_number="DEMO")
+        db.add(demo_unit)
+        db.flush()
+
+        demo_tenant = Tenant(name="Demo Tenant", phone=DEMO_TENANT_PHONE, unit_id=demo_unit.id)
+        db.add(demo_tenant)
+        db.flush()
+
+        this_month_due = now.replace(day=1)
+        last_month_due = this_month_due - timedelta(days=1)
+        last_month_due = last_month_due.replace(day=1)
+        db.add(
+            Payment(
+                tenant_id=demo_tenant.id,
+                amount_cents=185000,
+                due_date=last_month_due,
+                paid_date=last_month_due + timedelta(days=2),
+                status="paid",
+            )
+        )
+        db.add(
+            Payment(
+                tenant_id=demo_tenant.id,
+                amount_cents=185000,
+                due_date=this_month_due,
+                paid_date=None,
+                status="unpaid",
+            )
+        )
+        db.add(
+            MaintenanceRequest(
+                tenant_id=demo_tenant.id,
+                title="Squeaky bedroom door",
+                description="The bedroom door hinge squeaks loudly when opened.",
+                category="other",
+                priority="low",
                 status="open",
             )
         )

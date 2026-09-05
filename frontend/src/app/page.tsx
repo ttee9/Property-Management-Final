@@ -18,6 +18,21 @@ export default function Home() {
         </div>
 
         <div className="card">
+          <h2>Try the demo</h2>
+          <p>Want to see it in action first? Use these demo accounts &mdash; no sign up required.</p>
+          <ul>
+            <li>
+              <strong>Property Manager:</strong> sign in with email <code>manager@demo.com</code> and
+              password <code>manager123</code>.
+            </li>
+            <li>
+              <strong>Tenant:</strong> sign in with phone number <code>555-555-0100</code>. The login
+              code will be shown right on the screen &mdash; no text message needed.
+            </li>
+          </ul>
+        </div>
+
+        <div className="card">
           <h2>What Property Management does</h2>
           <p>
             Property Management is a lightweight portal that connects landlords and property
