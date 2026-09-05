@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime, timedelta
 
@@ -17,6 +18,7 @@ from ..security import (
 from ..sms import send_otp_sms
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 OTP_RESEND_COOLDOWN_SECONDS = 30
@@ -54,7 +56,16 @@ def request_otp(payload: schemas.TenantOtpRequest, db: Session = Depends(get_db)
     db.add(otp)
     db.commit()
 
-    send_otp_sms(phone, code)
+    try:
+        send_otp_sms(phone, code)
+    except Exception:
+        logger.exception("Failed to send OTP SMS to %s", phone)
+        db.delete(otp)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't send the login code. Please try again in a moment.",
+        )
 
     response = {"message": "A login code was sent to your phone."}
     if ENVIRONMENT != "production":

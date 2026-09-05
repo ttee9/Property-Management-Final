@@ -26,12 +26,20 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def normalize_phone(phone: str) -> str:
-    """Keep a leading + and digits only, e.g. '(415) 555-0100' -> '+14155550100' if country
-    code already present, otherwise just strips formatting: '415-555-0100' -> '4155550100'."""
+    """Normalize to E.164 (e.g. '(415) 555-0100' -> '+14155550100') so numbers are both a
+    consistent lookup key and valid for Twilio to actually send to. A 10-digit number is
+    assumed US/Canada and gets a +1 prefix; an 11-digit number starting with 1 just gets the
+    +. Anything already carrying a country code (a leading +) is left as entered."""
     cleaned = re.sub(r"[^\d+]", "", phone or "")
     if cleaned.startswith("+"):
         return "+" + re.sub(r"\D", "", cleaned[1:])
-    return cleaned
+
+    digits = re.sub(r"\D", "", cleaned)
+    if len(digits) == 10:
+        return "+1" + digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    return "+" + digits if digits else cleaned
 
 
 def generate_otp() -> str:
