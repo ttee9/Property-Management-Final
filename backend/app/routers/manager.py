@@ -71,6 +71,66 @@ def list_tenants(
     return out
 
 
+@router.get("/properties", response_model=list[schemas.PropertyOut])
+def list_properties(
+    manager: models.Manager = Depends(get_current_manager),
+    db: Session = Depends(get_db),
+):
+    properties = (
+        db.query(models.Property)
+        .filter(models.Property.manager_id == manager.id)
+        .options(joinedload(models.Property.units))
+        .order_by(models.Property.name)
+        .all()
+    )
+    return [
+        schemas.PropertyOut(
+            id=p.id,
+            name=p.name,
+            address=p.address,
+            units=[schemas.UnitBrief(id=u.id, unit_number=u.unit_number) for u in p.units],
+        )
+        for p in properties
+    ]
+
+
+@router.post("/properties", response_model=schemas.PropertyOut, status_code=status.HTTP_201_CREATED)
+def create_property(
+    payload: schemas.PropertyCreate,
+    manager: models.Manager = Depends(get_current_manager),
+    db: Session = Depends(get_db),
+):
+    prop = models.Property(name=payload.name.strip(), address=payload.address.strip(), manager_id=manager.id)
+    db.add(prop)
+    db.commit()
+    db.refresh(prop)
+    return schemas.PropertyOut(id=prop.id, name=prop.name, address=prop.address, units=[])
+
+
+@router.post(
+    "/properties/{property_id}/units", response_model=schemas.UnitBrief, status_code=status.HTTP_201_CREATED
+)
+def create_unit(
+    property_id: str,
+    payload: schemas.UnitCreate,
+    manager: models.Manager = Depends(get_current_manager),
+    db: Session = Depends(get_db),
+):
+    prop = (
+        db.query(models.Property)
+        .filter(models.Property.id == property_id, models.Property.manager_id == manager.id)
+        .first()
+    )
+    if prop is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+
+    unit = models.Unit(property_id=prop.id, unit_number=payload.unit_number.strip())
+    db.add(unit)
+    db.commit()
+    db.refresh(unit)
+    return schemas.UnitBrief(id=unit.id, unit_number=unit.unit_number)
+
+
 @router.get("/units", response_model=list[schemas.UnitOut])
 def list_units(
     manager: models.Manager = Depends(get_current_manager),

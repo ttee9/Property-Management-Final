@@ -47,6 +47,18 @@ export interface Unit {
   property_name: string;
 }
 
+export interface UnitBrief {
+  id: string;
+  unit_number: string;
+}
+
+export interface Property {
+  id: string;
+  name: string;
+  address: string;
+  units: UnitBrief[];
+}
+
 export function formatCents(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }

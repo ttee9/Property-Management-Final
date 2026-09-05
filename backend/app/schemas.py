@@ -20,6 +20,12 @@ class ManagerLoginRequest(BaseModel):
     password: str
 
 
+class ManagerSignupRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    email: str
+    password: str = Field(..., min_length=8, max_length=200)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -108,6 +114,33 @@ class UnitOut(BaseModel):
     id: str
     unit_number: str
     property_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class UnitBrief(BaseModel):
+    id: str
+    unit_number: str
+
+    class Config:
+        from_attributes = True
+
+
+class PropertyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    address: str = Field(..., min_length=1, max_length=300)
+
+
+class UnitCreate(BaseModel):
+    unit_number: str = Field(..., min_length=1, max_length=50)
+
+
+class PropertyOut(BaseModel):
+    id: str
+    name: str
+    address: str
+    units: list[UnitBrief] = []
 
     class Config:
         from_attributes = True

@@ -11,6 +11,7 @@ from ..security import (
     create_access_token,
     generate_otp,
     hash_otp,
+    hash_password,
     normalize_phone,
     otp_expiry,
     verify_password,
@@ -112,6 +113,24 @@ def manager_login(payload: schemas.ManagerLoginRequest, db: Session = Depends(ge
     manager = db.query(models.Manager).filter(models.Manager.email == payload.email.lower()).first()
     if manager is None or not verify_password(payload.password, manager.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    token = create_access_token(subject=manager.id, role="manager")
+    return schemas.TokenResponse(access_token=token, role="manager")
+
+
+@router.post("/manager/signup", response_model=schemas.TokenResponse, status_code=status.HTTP_201_CREATED)
+def manager_signup(payload: schemas.ManagerSignupRequest, db: Session = Depends(get_db)):
+    email = payload.email.lower().strip()
+    existing = db.query(models.Manager).filter(models.Manager.email == email).first()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists"
+        )
+
+    manager = models.Manager(name=payload.name.strip(), email=email, password_hash=hash_password(payload.password))
+    db.add(manager)
+    db.commit()
+    db.refresh(manager)
 
     token = create_access_token(subject=manager.id, role="manager")
     return schemas.TokenResponse(access_token=token, role="manager")
